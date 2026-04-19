@@ -59,16 +59,19 @@ def feishu():
 
         user_id = data.get("event", {}).get("sender", {}).get("sender_id", {}).get("open_id", "test_user")
 
-        # 调用 Dify
+        # ✅ 改这里：Chatflow 要用 workflows/run
         resp = requests.post(
-            "https://api.dify.ai/v1/chat-messages",
+            "https://api.dify.ai/v1/workflows/run",
             headers={
                 "Authorization": f"Bearer {DIFY_API_KEY}",
                 "Content-Type": "application/json"
             },
             json={
-                "inputs": {"context": latest_summary},
-                "query": question,
+                # ✅ 改这里：query 要放进 inputs
+                "inputs": {
+                    "query": question,
+                    "context": latest_summary
+                },
                 "response_mode": "blocking",
                 "user": user_id
             },
@@ -78,7 +81,8 @@ def feishu():
         result = resp.json()
         print("🤖 Dify返回：", result)
 
-        answer = result.get("answer", "暂无回答")
+        # ✅ 改这里：Chatflow 返回结构
+        answer = result.get("data", {}).get("outputs", {}).get("text", "暂无回答")
 
         return make_utf8_response(answer)
 
