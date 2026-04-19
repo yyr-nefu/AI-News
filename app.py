@@ -1,16 +1,16 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 import requests
 import json
 import sys
 import os
 
-# ✅ 防止日志中文乱码
+# ✅ 强制 stdout utf-8
 sys.stdout.reconfigure(encoding='utf-8')
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
-# 🔑 换成你自己的 Chat App Key
+# 🔑 换成你的 Chat App Key（必须是 Chat 类型）
 DIFY_API_KEY = "app-这里换成你新的key"
 
 # 🧠 今日资讯缓存
@@ -52,18 +52,19 @@ def update_news():
 
 
 # ================================
-# 🔥 统一 UTF-8 返回（彻底规避编码问题）
+# 🔥 核心：完全绕开 Flask 编码
 # ================================
 def make_utf8_response(text):
-    return (
-        json.dumps({
-            "msg_type": "text",
-            "content": {
-                "text": text
-            }
-        }, ensure_ascii=False),
-        200,
-        {"Content-Type": "application/json; charset=utf-8"}
+    body = json.dumps({
+        "msg_type": "text",
+        "content": {
+            "text": text
+        }
+    }, ensure_ascii=False)
+
+    return Response(
+        body,
+        content_type="application/json; charset=utf-8"
     )
 
 
@@ -78,7 +79,7 @@ def feishu():
         data = request.get_json(force=True)
         print("📩 飞书请求：", data)
 
-        # ✅ challenge 验证
+        # ✅ challenge
         if "challenge" in data:
             return jsonify({"challenge": data["challenge"]})
 
@@ -123,8 +124,9 @@ def feishu():
         result = resp.json()
         print("🤖 Dify返回：", result)
 
+        # ✅ Key错误处理
         if result.get("code") == "unauthorized":
-            answer = "❌ Dify Key 无效，请检查是否使用 Chat App 并已发布"
+            answer = "❌ Dify Key 无效（必须用 Chat App 并发布）"
         else:
             answer = result.get("answer", "暂无回答")
 
@@ -136,7 +138,7 @@ def feishu():
 
 
 # ================================
-# 🚀 启动（Render 必备）
+# 🚀 Render 启动
 # ================================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
