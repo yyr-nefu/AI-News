@@ -1,11 +1,13 @@
 from flask import Flask, request, jsonify, make_response
 import requests
 import json
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
 
 app = Flask(__name__)
-
+app.config['JSON_AS_ASCII'] = False
 # 🔑 你的 Dify Chat API Key
-DIFY_API_KEY = "app-你的key"
+DIFY_API_KEY = "app-XkgdeRjVy3HVr3W1kDF0Nsu3"
 
 # 🧠 全局缓存（存今日资讯）
 latest_summary = "今天暂无AI资讯"
