@@ -2,15 +2,30 @@ from flask import Flask, request, jsonify, make_response
 import requests
 import json
 import sys
+
 sys.stdout.reconfigure(encoding='utf-8')
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
+
 # 🔑 你的 Dify Chat API Key
 DIFY_API_KEY = "app-XkgdeRjVy3HVr3W1kDF0Nsu3"
 
 # 🧠 全局缓存（存今日资讯）
 latest_summary = "今天暂无AI资讯"
+
+
+# ================================
+# ✅ 安全打印（解决中文炸）
+# ================================
+def safe_print(*args):
+    try:
+        print(*args)
+    except:
+        try:
+            print(str(args).encode("utf-8", "ignore").decode("utf-8"))
+        except:
+            print("日志输出异常")
 
 
 # ================================
@@ -22,20 +37,20 @@ def update_news():
 
     try:
         data = request.get_json(force=True)
-        print("📩 收到原始数据：", data)
+        safe_print("📩 收到原始数据：", data)
 
         summary = data.get("summary", "")
 
         if summary:
             latest_summary = summary
-            print("✅ 更新成功：", latest_summary)
+            safe_print("✅ 更新成功：", latest_summary)
         else:
-            print("⚠️ 没拿到 summary")
+            safe_print("⚠️ 没拿到 summary")
 
         return jsonify({"status": "ok"})
 
     except Exception as e:
-        print("❌ update_news 报错：", str(e))
+        safe_print("❌ update_news 报错：", str(e))
         return jsonify({"error": str(e)})
 
 
@@ -48,7 +63,7 @@ def feishu():
 
     try:
         data = request.get_json(force=True)
-        print("📩 飞书请求：", data)
+        safe_print("📩 飞书请求：", data)
 
         # ✅ 飞书 challenge 验证
         if "challenge" in data:
@@ -68,7 +83,7 @@ def feishu():
         msg_json = json.loads(content) if content else {}
         question = msg_json.get("text", "")
 
-        print("👤 用户问题：", question)
+        safe_print("👤 用户问题：", question)
 
         # ================================
         # 👉 用户ID（防炸）
@@ -96,12 +111,12 @@ def feishu():
         )
 
         result = resp.json()
-        print("🤖 Dify返回：", result)
+        safe_print("🤖 Dify返回：", result)
 
         answer = result.get("answer", "暂无回答")
 
         # ================================
-        # 🔥 关键：返回 + 绕过 ngrok 拦截
+        # 🔥 返回
         # ================================
         response = make_response(jsonify({
             "msg_type": "text",
@@ -115,7 +130,7 @@ def feishu():
         return response
 
     except Exception as e:
-        print("❌ feishu 出错：", str(e))
+        safe_print("❌ feishu 出错：", str(e))
 
         response = make_response(jsonify({
             "msg_type": "text",
