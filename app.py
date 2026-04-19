@@ -1,16 +1,16 @@
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify
 import requests
 import json
 import sys
 import os
 
-# ✅ 防止中文日志报错
+# ✅ 防止日志中文乱码
 sys.stdout.reconfigure(encoding='utf-8')
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
-# 🔑 换成你「Chat App」的 Key
+# 🔑 换成你自己的 Chat App Key
 DIFY_API_KEY = "app-这里换成你新的key"
 
 # 🧠 今日资讯缓存
@@ -52,6 +52,22 @@ def update_news():
 
 
 # ================================
+# 🔥 统一 UTF-8 返回（彻底规避编码问题）
+# ================================
+def make_utf8_response(text):
+    return (
+        json.dumps({
+            "msg_type": "text",
+            "content": {
+                "text": text
+            }
+        }, ensure_ascii=False),
+        200,
+        {"Content-Type": "application/json; charset=utf-8"}
+    )
+
+
+# ================================
 # 2️⃣ 飞书消息入口
 # ================================
 @app.route("/feishu", methods=["POST"])
@@ -81,6 +97,7 @@ def feishu():
 
         print("👤 用户问题：", question)
 
+        # 👉 用户ID
         user_id = data.get("event", {}).get("sender", {}).get("sender_id", {}).get("open_id", "test_user")
 
         # ================================
@@ -116,23 +133,6 @@ def feishu():
     except Exception as e:
         print("❌ feishu 出错：", str(e))
         return make_utf8_response(f"出错了: {str(e)}")
-
-
-# ================================
-# 🔥 统一 UTF-8 返回（核心修复）
-# ================================
-def make_utf8_response(text):
-    response = make_response(
-        json.dumps({
-            "msg_type": "text",
-            "content": {
-                "text": text
-            }
-        }, ensure_ascii=False)
-    )
-
-    response.headers["Content-Type"] = "application/json; charset=utf-8"
-    return response
 
 
 # ================================
