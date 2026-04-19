@@ -105,7 +105,7 @@ def feishu():
         # 👉 调用 Dify
         # ================================
         resp = requests.post(
-            "https://api.dify.ai/v1/chat-messages",
+            "https://ai-news-heaa.onrender.com/v1/chat-messages",
             headers={
                 "Authorization": f"Bearer {DIFY_API_KEY}",
                 "Content-Type": "application/json"
