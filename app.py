@@ -7,7 +7,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
-DIFY_API_KEY = "app-XkgdeRjVy3HVr3W1kDF0Nsu3"
+DIFY_API_KEY = "app-x2HhRfqbkVQA97Acpw07Hjzo"
 
 latest_summary = "今天暂无AI资讯"
 
