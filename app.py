@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
 # 🔑 换成你的 Chat App Key（必须是 Chat 类型）
-DIFY_API_KEY = "app-这里换成你新的key"
+DIFY_API_KEY = "app-x2HhRfqbkVQA97Acpw07Hjzo"
 
 # 🧠 今日资讯缓存
 latest_summary = "今天暂无AI资讯"
