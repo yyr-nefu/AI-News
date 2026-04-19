@@ -2,97 +2,64 @@ from flask import Flask, request, jsonify, make_response
 import requests
 import json
 import sys
-
 sys.stdout.reconfigure(encoding='utf-8')
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
-# 🔑 你的 Dify Chat API Key
 DIFY_API_KEY = "app-XkgdeRjVy3HVr3W1kDF0Nsu3"
 
-# 🧠 全局缓存（存今日资讯）
 latest_summary = "今天暂无AI资讯"
 
 
-# ================================
-# ✅ 安全打印（解决中文炸）
-# ================================
-def safe_print(*args):
-    try:
-        print(*args)
-    except:
-        try:
-            print(str(args).encode("utf-8", "ignore").decode("utf-8"))
-        except:
-            print("日志输出异常")
-
-
-# ================================
-# 1️⃣ 接收 Dify Workflow 推送（存今日资讯）
-# ================================
 @app.route("/update_news", methods=["POST"])
 def update_news():
     global latest_summary
 
     try:
         data = request.get_json(force=True)
-        safe_print("📩 收到原始数据：", data)
+        print("📩 收到原始数据：", data)
 
         summary = data.get("summary", "")
 
         if summary:
             latest_summary = summary
-            safe_print("✅ 更新成功：", latest_summary)
+            print("✅ 更新成功：", latest_summary)
         else:
-            safe_print("⚠️ 没拿到 summary")
+            print("⚠️ 没拿到 summary")
 
         return jsonify({"status": "ok"})
 
     except Exception as e:
-        safe_print("❌ update_news 报错：", str(e))
+        print("❌ update_news 报错：", str(e))
         return jsonify({"error": str(e)})
 
 
-# ================================
-# 2️⃣ 飞书消息入口（AI问答）
-# ================================
 @app.route("/feishu", methods=["POST"])
 def feishu():
     global latest_summary
 
     try:
         data = request.get_json(force=True)
-        safe_print("📩 飞书请求：", data)
+        print("📩 飞书请求：", data)
 
-        # ✅ 飞书 challenge 验证
+        # 飞书验证
         if "challenge" in data:
             return jsonify({"challenge": data["challenge"]})
 
-        # ✅ 防御：不是飞书结构
         if "event" not in data:
-            return make_response(jsonify({
-                "msg_type": "text",
-                "content": {"text": "无效请求（非飞书格式）"}
-            }), 200, {"ngrok-skip-browser-warning": "true"})
+            return make_utf8_response("无效请求（非飞书格式）")
 
-        # ================================
-        # 👉 解析用户问题
-        # ================================
+        # 解析消息
         content = data.get("event", {}).get("message", {}).get("content", "")
         msg_json = json.loads(content) if content else {}
         question = msg_json.get("text", "")
 
-        safe_print("👤 用户问题：", question)
+        print("👤 用户问题：", question)
 
-        # ================================
-        # 👉 用户ID（防炸）
-        # ================================
         user_id = data.get("event", {}).get("sender", {}).get("sender_id", {}).get("open_id", "test_user")
 
-        # ================================
-        # 👉 调用 Dify
-        # ================================
+        # 调用 Dify
         resp = requests.post(
             "https://api.dify.ai/v1/chat-messages",
             headers={
@@ -100,9 +67,7 @@ def feishu():
                 "Content-Type": "application/json"
             },
             json={
-                "inputs": {
-                    "context": latest_summary
-                },
+                "inputs": {"context": latest_summary},
                 "query": question,
                 "response_mode": "blocking",
                 "user": user_id
@@ -111,41 +76,29 @@ def feishu():
         )
 
         result = resp.json()
-        safe_print("🤖 Dify返回：", result)
+        print("🤖 Dify返回：", result)
 
         answer = result.get("answer", "暂无回答")
 
-        # ================================
-        # 🔥 返回
-        # ================================
-        response = make_response(jsonify({
-            "msg_type": "text",
-            "content": {
-                "text": answer
-            }
-        }))
-
-        response.headers["ngrok-skip-browser-warning"] = "true"
-
-        return response
+        return make_utf8_response(answer)
 
     except Exception as e:
-        safe_print("❌ feishu 出错：", str(e))
-
-        response = make_response(jsonify({
-            "msg_type": "text",
-            "content": {
-                "text": f"出错了: {str(e)}"
-            }
-        }))
-
-        response.headers["ngrok-skip-browser-warning"] = "true"
-
-        return response
+        print("❌ feishu 出错：", str(e))
+        return make_utf8_response(f"出错了: {str(e)}")
 
 
-# ================================
-# 启动服务
-# ================================
+# 🔥🔥🔥 核心函数（彻底解决中文乱码）
+def make_utf8_response(text):
+    response = make_response(json.dumps({
+        "msg_type": "text",
+        "content": {"text": text}
+    }, ensure_ascii=False))
+
+    response.headers["Content-Type"] = "application/json; charset=utf-8"
+    response.headers["ngrok-skip-browser-warning"] = "true"
+
+    return response
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
