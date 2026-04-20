@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
 # 🔑 换成你的 Chat App Key（必须是 Chat 类型）
-DIFY_API_KEY = "app-x2HhRfqbkVQA97Acpw07Hjzo"
+DIFY_API_KEY = "app-9oqjwy7dbC4Jd8XgzEjNzrqg"
 
 # 🧠 今日资讯缓存
 latest_summary = "今天暂无AI资讯"
@@ -105,7 +105,7 @@ def feishu():
         # 👉 调用 Dify
         # ================================
         resp = requests.post(
-            "https://ai-news-heaa.onrender.com/v1/chat-messages",
+            "https://api.dify.ai/v1/chat-messages",
             headers={
                 "Authorization": f"Bearer {DIFY_API_KEY}",
                 "Content-Type": "application/json"
