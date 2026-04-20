@@ -10,10 +10,10 @@ sys.stdout.reconfigure(encoding='utf-8')
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
-# 🔑 Dify Chat Key（你已提供）
+# 🔑 Dify Chat Key
 DIFY_API_KEY = "app-9oqjwy7dbC4Jd8XgzEjNzrqg"
 
-# 🔥 飞书凭证（放 Render 环境变量）
+# 🔥 飞书凭证（必须在 Render 环境变量里配）
 FEISHU_APP_ID = os.getenv("FEISHU_APP_ID")
 FEISHU_APP_SECRET = os.getenv("FEISHU_APP_SECRET")
 
@@ -56,7 +56,7 @@ def update_news():
 
 
 # ================================
-# 🔥 UTF-8响应（保留你的）
+# 🔥 UTF-8响应（保留）
 # ================================
 def make_utf8_response(text):
     body = json.dumps({
@@ -73,22 +73,31 @@ def make_utf8_response(text):
 
 
 # ================================
-# 🔥 获取 tenant_access_token
+# 🔥 获取 tenant_access_token（加日志）
 # ================================
 def get_tenant_access_token():
     url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal/"
+
     resp = requests.post(url, json={
         "app_id": FEISHU_APP_ID,
         "app_secret": FEISHU_APP_SECRET
     })
-    return resp.json().get("tenant_access_token")
+
+    data = resp.json()
+    print("🔑 token返回：", data)
+
+    return data.get("tenant_access_token")
 
 
 # ================================
-# 🔥 发送飞书消息
+# 🔥 发送飞书消息（加错误判断）
 # ================================
 def send_feishu_message(chat_id, text):
     token = get_tenant_access_token()
+
+    if not token:
+        print("❌ 没拿到 token（检查 APP_ID / SECRET）")
+        return
 
     url = "https://open.feishu.cn/open-apis/im/v1/messages"
 
@@ -103,7 +112,12 @@ def send_feishu_message(chat_id, text):
         "content": json.dumps({"text": text}, ensure_ascii=False)
     }
 
-    resp = requests.post(url + "?receive_id_type=chat_id", headers=headers, json=body)
+    resp = requests.post(
+        url + "?receive_id_type=chat_id",
+        headers=headers,
+        json=body
+    )
+
     print("📤 飞书发送结果：", resp.text)
 
 
@@ -118,7 +132,7 @@ def feishu():
         data = request.get_json(force=True)
         print("📩 飞书请求：", data)
 
-        # ✅ challenge
+        # ✅ challenge 验证
         if "challenge" in data:
             return jsonify({"challenge": data["challenge"]})
 
@@ -140,8 +154,12 @@ def feishu():
         # 👉 用户ID
         user_id = data.get("event", {}).get("sender", {}).get("sender_id", {}).get("open_id", "test_user")
 
-        # 👉 chat_id（发消息用）
+        # 👉 chat_id
         chat_id = data.get("event", {}).get("message", {}).get("chat_id")
+
+        if not chat_id:
+            print("❌ 没拿到 chat_id")
+            return jsonify({"code": 0})
 
         # ================================
         # 👉 调用 Dify
@@ -172,10 +190,9 @@ def feishu():
         else:
             answer = result.get("answer", "暂无回答")
 
-        # 🔥 主动发消息（关键）
+        # 🔥 主动发消息
         send_feishu_message(chat_id, answer)
 
-        # 🔥 飞书必须返回200
         return jsonify({"code": 0})
 
     except Exception as e:
